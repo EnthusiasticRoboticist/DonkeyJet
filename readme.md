@@ -176,6 +176,7 @@ i2cset -y 1 0x40 0x06 0x00 0x00 0x4F 0x01 i
 
 ## Joystick
 
+[Read more](https://www.enthusiasticroboticist.com/blog/using-bluetooth-controller-with-ros-2-on-jetson-nano/)
 [About Joystick in Linux](https://opencoursehub.cs.sfu.ca/bfraser/grav-cms/cmpt433/links/files/2022-student-howtos/LinuxJoystick.hLibrary.pdf).
 
 ### Test the joystick
