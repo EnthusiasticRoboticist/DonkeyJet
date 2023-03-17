@@ -1,0 +1,18 @@
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE} as BUILDER
+
+USER root
+RUN getent group i2c || groupadd i2c \
+    && usermod -aG i2c dev \
+    && usermod -aG render dev
+
+USER dev
+COPY --chown=dev:dev ros2_ws/src /home/dev/ros2_ws/src
+WORKDIR /home/dev/ros2_ws 
+
+SHELL ["/bin/bash", "-c"]
+RUN source /opt/ros/foxy/setup.bash \
+    && colcon build
+
+RUN echo "source /home/dev/ros2_ws/install/setup.bash" >> /home/dev/.bashrc

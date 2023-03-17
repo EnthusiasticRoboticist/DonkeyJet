@@ -1,0 +1,9 @@
+# https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md
+
+[registry."dockerregistry:5000"]
+  http = true
+  insecure = true
+
+[registry."192.168.68.70:5000"]
+  http = true
+  insecure = true
