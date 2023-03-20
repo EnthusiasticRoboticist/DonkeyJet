@@ -7,35 +7,21 @@
 #include "rclcpp/rclcpp.hpp"
 #include "bot_hardware/msg/joy2.hpp"
 
-
 class JoyStick : public rclcpp::Node
 {
 public:
   JoyStick() : Node("joystick")
   {
-    std::string device{"/dev/input/js0"};
-    js_fd_ = open(device.c_str(), O_RDONLY | O_NONBLOCK);
-    while (js_fd_ < 0)
-    {
-      RCLCPP_ERROR(this->get_logger(), "Failed to open joystick device %d, trying again in 1 sec.", js_fd_);
-      close(js_fd_);
-      usleep(1000000);
-      js_fd_ = open(device.c_str(), O_RDONLY | O_NONBLOCK);
-    }
-
-    number_of_axes = get_axis_count(js_fd_);
-    number_of_buttons = get_button_count(js_fd_);
-
-    RCLCPP_INFO(get_logger(), "joystick with %d axis and %d buttons is opened", number_of_axes, number_of_buttons);
+    openJoystick(true);
 
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(1), std::bind(&JoyStick::timer_callback, this));
-    
+
     js_publisher_ = this->create_publisher<bot_hardware::msg::Joy2>("/joy", 10);
 
     js_msg_.header.stamp = this->get_clock()->now();
     js_msg_.header.frame_id = "";
-    
+
     // initialzie with bot_hardware::msg::Joy2::INVALID means it hasn't been updated from joystick yet
     js_msg_.button = bot_hardware::msg::Joy2::INVALID;
     js_msg_.button_value = bot_hardware::msg::Joy2::INVALID;
@@ -47,8 +33,19 @@ private:
   void timer_callback()
   {
     struct js_event event;
-    while (read_event(js_fd_, &event) == 0)
+    while (true)
     {
+      int errorno = read_event(js_fd_, &event);
+      if (errorno != 0)
+      {
+        // non blocking read could result 11 when there is no event.
+        if (errorno != 11)
+        {
+          RCLCPP_ERROR(this->get_logger(), "reading joystick not successful, errorno: %d: %s", errorno, strerror(errno));
+          openJoystick(false);
+        }
+        return;
+      }
       switch (event.type)
       {
       case JS_EVENT_BUTTON:
@@ -71,8 +68,33 @@ private:
         /* Ignore init events. */
         break;
       }
-
     }
+  }
+
+  void openJoystick(bool tryUntilSuccess)
+  {
+    std::string device{"/dev/input/js0"};
+    js_fd_ = open(device.c_str(), O_RDONLY | O_NONBLOCK);
+    while (js_fd_ < 0)
+    {
+      RCLCPP_ERROR(this->get_logger(), "Failed to open joystick device %d", js_fd_);
+      close(js_fd_);
+      if (tryUntilSuccess)
+      {
+        RCLCPP_ERROR(this->get_logger(), "trying again in 1 sec.");
+        usleep(1000000);
+        js_fd_ = open(device.c_str(), O_RDONLY | O_NONBLOCK);
+      }
+      else
+      {
+        return;
+      }
+    }
+
+    number_of_axes = get_axis_count(js_fd_);
+    number_of_buttons = get_button_count(js_fd_);
+
+    RCLCPP_INFO(get_logger(), "joystick with %d axis and %d buttons is opened", number_of_axes, number_of_buttons);
   }
 
   void publish()

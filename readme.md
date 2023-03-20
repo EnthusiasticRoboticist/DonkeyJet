@@ -1,6 +1,6 @@
 # Workspace for DonkeyJet
 
-Introducing my ongoing robotics project, currently named **DonkeyJet**, inspired by the [Donkey Car project](https://www.donkeycar.com/). This mobile robot is built on an RC car frame and powered by Jetson Nano, providing a hands-on platform for practicing robotics knowledge. The goal is to continually enhance its capabilities while exploring various aspects of robotics technology. While I am not certain about the name DonkeyJet, I invite you to follow me on this exciting journey of discovery as I document my progress and share insights with fellow enthusiasts in my weblog[here](https://www.enthusiasticroboticist.com/).
+Introducing my ongoing robotics project, currently named **DonkeyJet**, inspired by the [Donkey Car project](https://www.donkeycar.com/). This mobile robot is built on an RC car frame and powered by Jetson Nano, providing a hands-on platform for practicing robotics knowledge. The goal is to continually enhance its capabilities while exploring various aspects of robotics technology. While I am not certain about the name DonkeyJet, I invite you to follow me on this exciting journey of discovery as I document my progress and share insights with fellow enthusiasts in my weblog [here](https://www.enthusiasticroboticist.com/).
 
 ## Docker Images
 
@@ -158,9 +158,9 @@ i2cset -y 1 0x40 0x00 0xA0
 
 # steering
 i2cset -y 1 0x40 0x0A 0x00 && \
-i2cset -y 1 0x40 0x0B 0x00 && \
-i2cset -y 1 0x40 0x0C 0x6F && \
-i2cset -y 1 0x40 0x0D 0x01
+  i2cset -y 1 0x40 0x0B 0x00 && \
+  i2cset -y 1 0x40 0x0C 0xFA && \
+  i2cset -y 1 0x40 0x0D 0x00
 
 i2cset -y 1 0x40 0x0A 0x00 0x00 0x4F 0x01 i
 

@@ -97,18 +97,6 @@ private:
     
     set_frequency(pwm_freq_);
 
-    // Enable the chip's auto-increment feature
-    // uint8_t mode1 = read_reg(PCA9685_MODE1);
-    // mode1 |= 0x20;
-    // write_reg(PCA9685_MODE1, mode1);
-
-    // Set the default LED on/off values
-    // for (int i = 0; i < 16; ++i)
-    // {
-    //   set_pwm(i, 0, 0);
-    // }
-
-
     // Set the default PWM values
     set_pwm(0, 0, 0);
     set_pwm(1, 0, 0);
