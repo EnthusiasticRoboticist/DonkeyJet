@@ -64,11 +64,21 @@ docker buildx build \
 
 ## Docker For Development
 ```bash
-docker -H 192.168.68.68 pull ${REGISTRY}/ros_base:latest \
-&& docker -H 192.168.68.68 buildx build -f Dockerfile.ros2_ws   --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest   -t ${REGISTRY}/ros2_ws:latest . \
-&& docker -H 192.168.68.68 run --name ros2_ws --rm -it --runtime nvidia --network host --gpus all --privileged -e DISPLAY -v /dev:/dev -v /proc:/proc -v /sys:/sys ${REGISTRY}/ros2_ws:latest bash -ic "ros2 run bot_hardware joy"
+export JETSON_IP=192.168.68.68
 
-docker -H 192.168.68.68 exec -it ros2_ws /bin/bash -ic "ros2 run bot_hardware pca9685"
+function BUILD_AND_RUN(){
+  docker -H $JETSON_IP pull ${REGISTRY}/ros_base:latest
+  docker -H $JETSON_IP buildx build -f Dockerfile.ros2_ws  --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest   -t ${REGISTRY}/ros2_ws:latest .
+  docker -H $JETSON_IP run --name ros2_ws --rm -it --runtime nvidia --network host --gpus all --privileged -e DISPLAY -v /dev:/dev -v /proc:/proc -v /sys:/sys ${REGISTRY}/ros2_ws:latest bash -ic "$@"
+}
+export EXEC_RUN="docker -H $JETSON_IP exec -it ros2_ws /bin/bash -ic"
+
+# Run nodes separately
+BUILD_AND_RUN "ros2 run bot_hardware joy"
+$EXEC_RUN "ros2 run bot_hardware pca9685"
+
+# run the launch file
+BUILD_AND_RUN "ros2 launch bot_hardware manual_control_launch.py"
 
 docker run \
   --rm \

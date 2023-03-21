@@ -170,7 +170,7 @@ private:
     throttle *= -1.0;
     if (std::abs(throttle) < 0.001 ) throttle = 0;
     uint16_t pwm = (uint16_t)(std::round(throttleMap->calPwm(throttle))) & 0x0FFF ;
-    RCLCPP_INFO(this->get_logger(), "THROTTLE %d, RAW %f", pwm, throttle);
+    RCLCPP_DEBUG(this->get_logger(), "THROTTLE %d, RAW %f", pwm, throttle);
     set_pwm(THROTTLE_CHANNEL, 0, pwm);
   }
 
@@ -181,7 +181,7 @@ private:
     if (std::abs(steering) < 0.0001 ) steering = 0;
     steering += 0.29;
     uint16_t pwm = (uint16_t)(std::round(steeringMap->calPwm(steering))) & 0x0FFF ;
-    RCLCPP_INFO(this->get_logger(), "STEERING %d, RAW %f", pwm, steering);
+    RCLCPP_DEBUG(this->get_logger(), "STEERING %d, RAW %f", pwm, steering);
     set_pwm(STEERING_CHANNEL, 0, pwm);
   }
 

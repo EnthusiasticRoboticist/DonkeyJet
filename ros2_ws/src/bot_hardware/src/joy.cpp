@@ -53,7 +53,7 @@ private:
         js_msg_.button_value = event.value;
         js_msg_.axis = bot_hardware::msg::Joy2::INVALID;
         js_msg_.axis_value = bot_hardware::msg::Joy2::INVALID;
-        RCLCPP_INFO(this->get_logger(), "Button %u %s", js_msg_.button, js_msg_.button_value ? "pressed" : "released");
+        RCLCPP_DEBUG(this->get_logger(), "Button %u %s", js_msg_.button, js_msg_.button_value ? "pressed" : "released");
         publish();
         break;
       case JS_EVENT_AXIS:
@@ -61,7 +61,7 @@ private:
         js_msg_.button_value = bot_hardware::msg::Joy2::INVALID;
         js_msg_.axis = event.number;
         js_msg_.axis_value = event.value / 32767.0;
-        RCLCPP_INFO(this->get_logger(), "Axis %u at %6f", js_msg_.axis, js_msg_.axis_value);
+        RCLCPP_DEBUG(this->get_logger(), "Axis %u at %6f", js_msg_.axis, js_msg_.axis_value);
         publish();
         break;
       default:
