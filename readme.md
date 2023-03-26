@@ -40,6 +40,7 @@ docker buildx build \
 docker context use localamd64
 docker pull ${REGISTRY}/ros_base:latest
 docker run \
+  --name ros_base \
   --rm \
   -it \
   --runtime nvidia \
@@ -80,7 +81,9 @@ $EXEC_RUN "ros2 run bot_hardware pca9685"
 # run the launch file
 BUILD_AND_RUN "ros2 launch bot_hardware manual_control_launch.py"
 
+# local dev env
 docker run \
+  --name ros_base \
   --rm \
   -it \
   --runtime nvidia \
@@ -92,6 +95,7 @@ docker run \
   -v /proc:/proc \
   -v /sys:/sys \
   -v `pwd`/ros2_ws/src:/home/dev/ros2_ws/src \
+  -v `pwd`/ros2_ws_tutorial/src:/home/dev/ros2_ws_tutorial/src \
   ${REGISTRY}/ros_base:latest \
   bash 
 ```
@@ -108,20 +112,30 @@ docker buildx build \
   -t ${REGISTRY}/ros_realsense:latest \
   --push .
 
+# on jetson run only once
+sudo curl https://raw.githubusercontent.com/IntelRealSense/librealsense/master/config/99-realsense-libusb.rules -o /etc/udev/rules.d/99-realsense-libusb.rules \
+  && sudo udevadm control --reload-rules \
+  && sudo udevadm trigger
 
 docker run \
+  --name ros_realsense \
   --rm \
   -it \
   --runtime nvidia \
   --network host \
   --gpus all \
-  --volume=/dev:/dev \
   --privileged \
+  -v /dev:/dev \
+  -v /proc:/proc \
+  -v /sys:/sys \
   ${REGISTRY}/ros_realsense:latest \
   bash
 
+
 # to test run the following in the docker container
 rs-depth
+
+ros2 launch realsense2_camera rs_launch.py initial_reset:=true
 ```
 
 ## Joystick
@@ -160,6 +174,7 @@ docker -H 192.168.68.68 run \
 
 ```bash
 docker run \
+  --name realsense
   --rm \
   -it \
   --runtime nvidia \

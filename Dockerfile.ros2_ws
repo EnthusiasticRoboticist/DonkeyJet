@@ -11,7 +11,9 @@ USER dev
 COPY --chown=dev:dev ros2_ws/src /home/dev/ros2_ws/src
 WORKDIR /home/dev/ros2_ws 
 
+# to make the "source" work
 SHELL ["/bin/bash", "-c"]
+
 RUN source /opt/ros/foxy/setup.bash \
     && colcon build
 
