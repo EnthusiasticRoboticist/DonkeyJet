@@ -2,8 +2,7 @@
 
 FROM nvcr.io/nvidia/cudagl:11.4.2-devel-ubuntu20.04 as amd64_base
 
-FROM nvcr.io/nvidia/l4t-jetpack:r35.2.1 as arm64_base
-RUN /usr/local/cuda/bin/nvcc --version
+FROM nvcr.io/nvidia/l4t-base:r32.3.1 as arm64_base
 
 FROM ${TARGETARCH}_base as dev
 
@@ -19,20 +18,21 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 
 # change the locale from POSIX to UTF-8
-RUN apt-get update && apt-get install -y locales && apt-get clean
+RUN apt-get update && apt-get install -y locales
 RUN locale-gen en_US en_US.UTF-8 && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 ENV LANG=en_US.UTF-8
 
 # add the ROS deb repo to the apt sources list
-RUN apt-get update \
-    && apt-get upgrade -y \
+RUN apt-get upgrade -y \
     && apt-get install -y \
         curl \
         wget \
         gnupg2 \
         lsb-release \
         software-properties-common \
-    && rm -rf /var/lib/apt/lists/*
+        python3-pip \
+        terminator
+    # && rm -rf /var/lib/apt/lists/* && apt-get clean
 
 RUN curl \
     -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
@@ -48,12 +48,7 @@ RUN add-apt-repository universe \
         ros-foxy-desktop \
         python3-argcomplete \
         ros-dev-tools \
-        python3-pip \
-    && apt clean
-
-RUN apt update \
-    && apt upgrade \
-    && apt-get install -y python3-rosdep terminator
+    && apt-get install -y python3-rosdep
 
 RUN rosdep init
 RUN rosdep update
@@ -66,28 +61,18 @@ RUN echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> 
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
-RUN useradd -ms /bin/bash dev
-RUN usermod -aG sudo dev
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-
 RUN apt-get install -y \
-        libevdev-dev \
-        libudev-dev \
-        jstest-gtk
+    libevdev-dev \
+    libudev-dev \
+    jstest-gtk \
+    ros-${ROS_DISTRO}-rqt* \
+    ros-${ROS_DISTRO}-navigation2 \
+    ros-${ROS_DISTRO}-nav2-bringup \
+    ros-${ROS_DISTRO}-turtlebot3* \
+    ros-${ROS_DISTRO}-joint-state-publisher-gui \
+    ros-${ROS_DISTRO}-robot-localization \
+    ros-${ROS_DISTRO}-xacro \
+    ros-${ROS_DISTRO}-ros2-control
 
-RUN apt-get install -y \
-    ros-foxy-rqt*
-
-RUN apt-get update --fix-missing \
-    && apt-get install --fix-missing -y \
-        ros-${ROS_DISTRO}-navigation2 \
-        ros-${ROS_DISTRO}-nav2-bringup \
-        ros-${ROS_DISTRO}-turtlebot3* \
-        ros-${ROS_DISTRO}-joint-state-publisher-gui \
-        ros-${ROS_DISTRO}-robot-localization \
-        ros-${ROS_DISTRO}-xacro \
-        ros-${ROS_DISTRO}-ros2-control
-
-USER dev
-RUN mkdir -p /home/dev/ros2_ws/src && mkdir /home/dev/ros2_ws_tutorial
-WORKDIR /home/dev/ros2_ws
+RUN mkdir -p /home/root/ros2_ws/src && mkdir /home/root/ros2_ws_tutorial
+WORKDIR /home/root/ros2_ws

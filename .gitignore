@@ -1,3 +1,5 @@
 .vscode
 blog
-realsense_issues.md
+thirdparty
+ros2_ws_tutorial
+notes/jetson.bashrc

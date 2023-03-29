@@ -1,5 +1,7 @@
 # https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md
 
+insecure-entitlements = [ "security.insecure", "network.host" ]
+
 [registry."dockerregistry:5000"]
   http = true
   insecure = true

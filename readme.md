@@ -15,15 +15,16 @@ We are using docker for this project. [Read more here](https://www.enthusiasticr
 Setup for building docker image for multiple platforms which images are built natively on the corresponding hardware without emulation.
 
 ```bash
+/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
 export REGISTRY="<the docker registry to be used, or dockerhub user>"
 
 docker context create localamd64 --docker  "host=unix:///var/run/docker.sock"
 docker context create jetson --docker "host=tcp://jetson:2375"
 
 # just one time
-docker buildx create --use  --driver-opt network=host --config=buildkitd.toml --name MultiPlatform
-docker buildx create --use  --driver-opt network=host --config=buildkitd.toml --name mybuilder localamd64
-docker buildx create --append --driver-opt network=host --config=buildkitd.toml --name mybuilder jetson
+# docker buildx create --use  --driver-opt network=host --config=buildkitd.toml --name MultiPlatform
+docker buildx create --use  --buildkitd-flags '--allow-insecure-entitlement security.insecure' --driver-opt network=host --config=buildkitd.toml --name mybuilder localamd64
+docker buildx create --append --buildkitd-flags '--allow-insecure-entitlement security.insecure' --driver-opt network=host --config=buildkitd.toml --name mybuilder jetson
 ```
 
 ### Docker image with CUDA and ROS2
@@ -31,10 +32,11 @@ docker buildx create --append --driver-opt network=host --config=buildkitd.toml 
 ```bash
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -f Dockerfile.base \
+  -f base.Dockerfile \
   -t ${REGISTRY}/ros_base:latest \
   --push .
 
+docker buildx build   --platform linux/amd64,linux/arm64   -f base.Dockerfile   -t ${REGISTRY}/ros_base:latest  . --output registry.insecure=true,push=true,type=image
 
 # test the images
 docker context use localamd64
@@ -57,10 +59,18 @@ docker run \
 # build my image
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -f Dockerfile.ros2_ws \
+  -f ros2_ws.Dockerfile \
   --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest \
   -t ${REGISTRY}/ros2_ws:latest \
   --push .
+
+
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f ros2_ws.Dockerfile \
+  --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest \
+  -t ${REGISTRY}/ros2_ws:latest \
+  . --output registry.insecure=true,push=true,type=image
 ```
 
 ## Docker For Development
@@ -69,7 +79,7 @@ export JETSON_IP=192.168.68.68
 
 function BUILD_AND_RUN(){
   docker -H $JETSON_IP pull ${REGISTRY}/ros_base:latest
-  docker -H $JETSON_IP buildx build -f Dockerfile.ros2_ws  --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest   -t ${REGISTRY}/ros2_ws:latest .
+  docker -H $JETSON_IP buildx build -f ros2_ws.Dockerfile  --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest   -t ${REGISTRY}/ros2_ws:latest .
   docker -H $JETSON_IP run --name ros2_ws --rm -it --runtime nvidia --network host --gpus all --privileged -e DISPLAY -v /dev:/dev -v /proc:/proc -v /sys:/sys ${REGISTRY}/ros2_ws:latest bash -ic "$@"
 }
 export EXEC_RUN="docker -H $JETSON_IP exec -it ros2_ws /bin/bash -ic"
@@ -107,8 +117,9 @@ docker run \
 ```bash
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -f Dockerfile.realsense \
+  -f realsense.Dockerfile \
   --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest \
+  --allow security.insecure \
   -t ${REGISTRY}/ros_realsense:latest \
   --push .
 
@@ -125,12 +136,12 @@ docker run \
   --network host \
   --gpus all \
   --privileged \
-  -v /dev:/dev \
-  -v /proc:/proc \
-  -v /sys:/sys \
   ${REGISTRY}/ros_realsense:latest \
   bash
 
+  -v /dev:/dev \
+  -v /proc:/proc \
+  -v /sys:/sys \
 
 # to test run the following in the docker container
 rs-depth
@@ -174,19 +185,22 @@ docker -H 192.168.68.68 run \
 
 ```bash
 docker run \
-  --name realsense
+  --name realsense \
   --rm \
   -it \
-  --runtime nvidia \
-  --network host \
-  --gpus all \
   --privileged \
-  -v /dev:/dev \
-  -v /proc:/proc \
-  -v /sys:/sys \
+  --network host \
+  -e DISPLAY \
+  --runtime nvidia \
+  --gpus all \
   ${REGISTRY}/ros_realsense:latest \
   bash
 
+  -v /dev/input:/dev/input \
+  -v /dev/v4l:/dev/v4l \
+  -v /dev:/dev \
+  -v /proc:/proc \
+  -v /sys:/sys \
 # issue about Jetson.GPIO inside docker: 
 # https://forums.developer.nvidia.com/t/jetson-gpio-not-working-on-python-inside-the-container/180435
 python -m pip install adafruit-circuitpython-servokit Jetson.GPIO
