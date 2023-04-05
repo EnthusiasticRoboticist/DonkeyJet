@@ -1,11 +1,19 @@
-FROM nvcr.io/nvidia/cudagl:11.4.2-devel-ubuntu20.04 as amd64_base
+# FROM nvcr.io/nvidia/cudagl:11.4.2-devel-ubuntu20.04 as amd64_base
 
-FROM nvcr.io/nvidia/l4t-base:r32.3.1 as arm64_base
+# FROM nvcr.io/nvidia/l4t-base:r32.5.0 as arm64_base
 
-FROM ${TARGETARCH}_base
+# FROM ${TARGETARCH}_base
+
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
+
+RUN ls /usr/local && echo `nproc`
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends make g++
+    && apt-get install -y --no-install-recommends make g++ lsb-release
+
+RUN lsb_release -a && nproc
 
 COPY ./cuda-samples /root/samples
 

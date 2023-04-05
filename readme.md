@@ -18,13 +18,14 @@ Setup for building docker image for multiple platforms which images are built na
 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
 export REGISTRY="<the docker registry to be used, or dockerhub user>"
 
-docker context create localamd64 --docker  "host=unix:///var/run/docker.sock"
 docker context create jetson --docker "host=tcp://jetson:2375"
+docker context create localamd64 --docker "host=unix:///var/run/docker.sock"
 
 # just one time
 # docker buildx create --use  --driver-opt network=host --config=buildkitd.toml --name MultiPlatform
-docker buildx create --use  --buildkitd-flags '--allow-insecure-entitlement security.insecure' --driver-opt network=host --config=buildkitd.toml --name mybuilder localamd64
-docker buildx create --append --buildkitd-flags '--allow-insecure-entitlement security.insecure' --driver-opt network=host --config=buildkitd.toml --name mybuilder jetson
+docker buildx create --use --driver-opt network=host --config=buildkitd-arm64.toml --name mybuilder jetson
+docker buildx create --append --driver-opt network=host --config=buildkitd-amd64.toml --name mybuilder localamd64
+
 ```
 
 ### Docker image with CUDA and ROS2
@@ -32,15 +33,13 @@ docker buildx create --append --buildkitd-flags '--allow-insecure-entitlement se
 ```bash
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -f base.Dockerfile \
-  -t ${REGISTRY}/ros_base:latest \
+  -f ros2_base.Dockerfile \
+  -t ${REGISTRY}/ros2_base2:latest \
   --push .
-
-docker buildx build   --platform linux/amd64,linux/arm64   -f base.Dockerfile   -t ${REGISTRY}/ros_base:latest  . --output registry.insecure=true,push=true,type=image
 
 # test the images
 docker context use localamd64
-docker pull ${REGISTRY}/ros_base:latest
+docker pull ${REGISTRY}/ros2_base2:latest
 docker run \
   --name ros_base \
   --rm \
@@ -49,7 +48,7 @@ docker run \
   --network host \
   --gpus all \
   -e DISPLAY \
-  ${REGISTRY}/ros_base:latest \
+  ${REGISTRY}/ros2_base2:latest \
   bash
 ```
 
@@ -60,7 +59,7 @@ docker run \
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   -f ros2_ws.Dockerfile \
-  --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest \
+  --build-arg BASE_IMAGE=${REGISTRY}/ros2_base2:latest \
   -t ${REGISTRY}/ros2_ws:latest \
   --push .
 
@@ -68,7 +67,7 @@ docker buildx build \
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   -f ros2_ws.Dockerfile \
-  --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest \
+  --build-arg BASE_IMAGE=${REGISTRY}/ros2_base2:latest \
   -t ${REGISTRY}/ros2_ws:latest \
   . --output registry.insecure=true,push=true,type=image
 ```
@@ -78,8 +77,8 @@ docker buildx build \
 export JETSON_IP=192.168.68.68
 
 function BUILD_AND_RUN(){
-  docker -H $JETSON_IP pull ${REGISTRY}/ros_base:latest
-  docker -H $JETSON_IP buildx build -f ros2_ws.Dockerfile  --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest   -t ${REGISTRY}/ros2_ws:latest .
+  docker -H $JETSON_IP pull ${REGISTRY}/ros2_base2:latest
+  docker -H $JETSON_IP buildx build -f ros2_ws.Dockerfile  --build-arg BASE_IMAGE=${REGISTRY}/ros2_base2:latest   -t ${REGISTRY}/ros2_ws:latest .
   docker -H $JETSON_IP run --name ros2_ws --rm -it --runtime nvidia --network host --gpus all --privileged -e DISPLAY -v /dev:/dev -v /proc:/proc -v /sys:/sys ${REGISTRY}/ros2_ws:latest bash -ic "$@"
 }
 export EXEC_RUN="docker -H $JETSON_IP exec -it ros2_ws /bin/bash -ic"
@@ -106,7 +105,7 @@ docker run \
   -v /sys:/sys \
   -v `pwd`/ros2_ws/src:/home/dev/ros2_ws/src \
   -v `pwd`/ros2_ws_tutorial/src:/home/dev/ros2_ws_tutorial/src \
-  ${REGISTRY}/ros_base:latest \
+  ${REGISTRY}/ros2_base2:latest \
   bash 
 ```
 
@@ -118,8 +117,7 @@ docker run \
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   -f realsense.Dockerfile \
-  --build-arg BASE_IMAGE=${REGISTRY}/ros_base:latest \
-  --allow security.insecure \
+  --build-arg BASE_IMAGE=${REGISTRY}/ros2_base2:latest \
   -t ${REGISTRY}/ros_realsense:latest \
   --push .
 
@@ -138,10 +136,6 @@ docker run \
   --privileged \
   ${REGISTRY}/ros_realsense:latest \
   bash
-
-  -v /dev:/dev \
-  -v /proc:/proc \
-  -v /sys:/sys \
 
 # to test run the following in the docker container
 rs-depth
@@ -169,12 +163,12 @@ jstest /dev/input/js0
 
 With ros
 ```
-docker -H 192.168.68.68 pull ${REGISTRY}/ros_base:latest
+docker -H 192.168.68.68 pull ${REGISTRY}/ros2_base2:latest
 docker -H 192.168.68.68 run \
   --rm -it  --runtime nvidia --network host \
   --gpus all --privileged \
   -v /dev:/dev -v /proc:/proc -v /sys:/sys \
-  ${REGISTRY}/ros_base:latest \
+  ${REGISTRY}/ros2_base2:latest \
   bash
 ```
 

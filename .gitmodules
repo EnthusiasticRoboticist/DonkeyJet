@@ -1,3 +1,6 @@
 [submodule "cuda-samples"]
 	path = cuda-samples
 	url = git@github.com:NVIDIA/cuda-samples.git
+[submodule "l4t-base"]
+	path = l4t-base
+	url = https://gitlab.com/nvidia/container-images/l4t-base.git

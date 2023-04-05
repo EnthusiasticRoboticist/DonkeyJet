@@ -3,3 +3,5 @@ blog
 thirdparty
 ros2_ws_tutorial
 notes/jetson.bashrc
+*.log
+build.sh

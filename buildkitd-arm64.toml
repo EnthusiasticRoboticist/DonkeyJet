@@ -11,4 +11,4 @@ insecure-entitlements = [ "security.insecure", "network.host" ]
   insecure = true
 
 [worker.oci]
-  platforms = [ "linux/amd64", "linux/arm64" ]
+  platforms = [ "linux/arm64" ]
