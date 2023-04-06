@@ -86,21 +86,23 @@ RUN mkdir -p ${ROS_ROOT}/src \
   && cd ${ROS_ROOT} \
   && vcs import --input https://raw.githubusercontent.com/ros2/ros2/foxy/ros2.repos src
 
-# Install dependencies using rosdep
-RUN cd ${ROS_ROOT} \
-  && apt upgrade -y \
-  && rosdep init \
-  && rosdep update \
-  && rosdep install --from-paths src --ignore-src -y --skip-keys "fastcdr rti-connext-dds-5.3.1 urdfdom_headers"
-
 RUN python3 -m pip install --upgrade pip && python3 -m pip install --upgrade --no-cache-dir --verbose cmake
 RUN cmake --version
 
-# Build the code in the workspace
-RUN cd ${ROS_ROOT} \
-  && colcon build
+RUN echo 'export ROS_PACKAGE_PATH="${ROS_ROOT}/src"' > /setup_ROS_PACKAGE_PATH.sh \
+  && echo 'for dir in ${ROS_ROOT}/src/*; do export ROS_PACKAGE_PATH="$dir:$ROS_PACKAGE_PATH"; done' >> /setup_ROS_PACKAGE_PATH.sh \
+  && echo "source /setup_ROS_PACKAGE_PATH.sh >> /etc/bash.bashrc"
 
-# env setup
+RUN cd ${ROS_ROOT} && source /setup_ROS_PACKAGE_PATH.sh \
+  && apt upgrade -y \
+  && rosdep init \
+  && rosdep update \
+  && rosinstall_generator desktop --rosdistro ${ROS_DISTRO} --deps --exclude RPP | vcs import src \
+  && rosdep install -y -r --ignore-src --from-paths src --rosdistro ${ROS_DISTRO}
+
+RUN cd ${ROS_ROOT} \
+  && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+
 RUN . ${ROS_ROOT}/install/local_setup.bash \
   && echo "source $ROS_ROOT/install/setup.bash" >> /etc/bash.bashrc \
   && echo "source $ROS_ROOT/install/local_setup.bash" >> /etc/bash.bashrc

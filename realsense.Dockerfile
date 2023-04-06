@@ -19,7 +19,7 @@ RUN apt-get update \
   && ln -s g++-8 /usr/bin/g++ \
   && apt-get clean
 
-ENV REALSENSE_BASE=/home/root
+ENV REALSENSE_BASE=/root
 ENV REALSENSE_DIR=$REALSENSE_BASE/librealsense
 
 # clone librealsense SKD
@@ -50,16 +50,25 @@ RUN apt-get install python3-rosdep -y
 # to make the "source" works
 SHELL ["/bin/bash", "-c"]
 
+RUN TEST_PLUGINLIB_PACKAGE="${ROS_ROOT}/build/pluginlib/pluginlib_enable_plugin_testing/install/test_pluginlib__test_pluginlib/share/test_pluginlib/package.xml" && \
+  sed -i '/<\/description>/a <license>BSD<\/license>' $TEST_PLUGINLIB_PACKAGE && \
+  sed -i '/<\/description>/a <maintainer email="michael@openrobotics.org">Michael Carroll<\/maintainer>' $TEST_PLUGINLIB_PACKAGE && \
+  cat $TEST_PLUGINLIB_PACKAGE
+
+RUN cd ${ROS_ROOT} \
+  && rosinstall_generator diagnostic_updater | vcs import src \
+  && colcon build --merge-install --packages-select diagnostic_updater
+
 # Install realsense ROS 2 wrapper
-RUN mkdir -p /home/root/ros2_pre_installed/src \
-  && cd /home/root/ros2_pre_installed/src \
+RUN mkdir -p /root/ros2_pre_installed/src \
+  && cd /root/ros2_pre_installed/src \
   && git clone https://github.com/IntelRealSense/realsense-ros.git -b ros2-development \
   && cd realsense-ros \
   && git checkout 6dcdc1fc0b898e38081e83edde8d5cea0e1e7c8b \
-  && cd /home/root/ros2_pre_installed \
+  && cd /root/ros2_pre_installed \
   && rosdep update \
-  && rosdep install -i --from-path src --rosdistro $ROS_DISTRO --skip-keys=librealsense2 -y \
-  && source /opt/ros/foxy/setup.bash \
+  && rosdep install -i --from-path src --ignore-src -r -y --rosdistro $ROS_DISTRO --skip-keys=librealsense2 \
+  && source ${ROS_ROOT}/install/setup.bash \
   && colcon build \
     --packages-up-to realsense2_camera realsense2_camera_msgs realsense2_description
 
@@ -67,4 +76,4 @@ RUN curl https://raw.githubusercontent.com/IntelRealSense/librealsense/master/co
   -o /etc/udev/rules.d/99-realsense-libusb.rules
 RUN echo '# Intel Realsense PYTHON PATH' >> /etc/bash.bashrc \
   && echo 'PYTHONPATH=$PYTHONPATH:'"$REALSENSE_DIR"'/usr/local/lib' >> /etc/bash.bashrc \
-  && echo "source /home/root/ros2_pre_installed/install/setup.bash" >> /etc/bash.bashrc
+  && echo "source /root/ros2_pre_installed/install/setup.bash" >> /etc/bash.bashrc

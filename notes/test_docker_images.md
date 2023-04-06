@@ -25,7 +25,7 @@ docker buildx build \
   --push .
 
 docker pull ${REGISTRY}/cudatest:latest
-docker run --rm -it --runtime nvidia ${REGISTRY}/cudatest:latest 
+docker run --pull=always --rm -it --runtime nvidia ${REGISTRY}/cudatest:latest 
 ```
 
 # Experiment with remote buildkit

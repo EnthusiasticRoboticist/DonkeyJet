@@ -33,15 +33,14 @@ docker buildx create --append --driver-opt network=host --config=buildkitd-amd64
 ```bash
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -f ros2_base.Dockerfile \
+  -f ros2_base2.Dockerfile \
   -t ${REGISTRY}/ros2_base2:latest \
   --push .
 
 # test the images
-docker context use localamd64
 docker pull ${REGISTRY}/ros2_base2:latest
 docker run \
-  --name ros_base \
+  --name ros2_base \
   --rm \
   -it \
   --runtime nvidia \
@@ -50,7 +49,12 @@ docker run \
   -e DISPLAY \
   ${REGISTRY}/ros2_base2:latest \
   bash
+
+# test images
+ros2 run demo_nodes_cpp talker
+ros2 run demo_nodes_cpp listener
 ```
+
 
 ## ROS2 Workspace Docker Container
 
@@ -92,7 +96,7 @@ BUILD_AND_RUN "ros2 launch bot_hardware manual_control_launch.py"
 
 # local dev env
 docker run \
-  --name ros_base \
+  --name ros2_base \
   --rm \
   -it \
   --runtime nvidia \
