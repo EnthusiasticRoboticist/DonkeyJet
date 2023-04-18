@@ -7,7 +7,7 @@ docker image
 MOUNT_WS
 
 # initial_reset:=true
-ros2 launch realsense2_camera rs_launch.py depth_module.profile:=640x480x6 rgb_camera.profile:=640x480x6
+ros2 launch realsense2_camera rs_launch.py depth_module.profile:=640x480x6 rgb_camera.profile:=640x480x6 initial_reset:=true
 
 # log_level:=DEBUG 
 # enable_color:=false

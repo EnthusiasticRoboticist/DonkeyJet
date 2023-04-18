@@ -19,6 +19,12 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(realsense2 REQUIRED)
+
+if(NOT realsense2_FOUND)
+  message(FATAL_ERROR "\n\n Intel RealSense SDK 2.0 is missing, please install it from https://github.com/IntelRealSense/librealsense/releases\n\n")
+endif()
 
 # custom message
 set(msg_files
@@ -36,6 +42,11 @@ ament_export_dependencies(rosidl_default_runtime) # for custom message
 add_executable(joy src/joy.cpp)
 ament_target_dependencies(joy rclcpp)
 
+# executable
+add_executable(realsense src/realsense.cpp)
+target_link_libraries(realsense ${realsense2_LIBRARY})
+ament_target_dependencies(realsense rclcpp nav_msgs realsense2)
+
 # expose the custom message types inside this package
 # I think it is not required when the custom messages are used in different package
 rosidl_target_interfaces(joy
@@ -43,7 +54,7 @@ rosidl_target_interfaces(joy
 
 
 add_executable(pca9685 src/pca9685.cpp)
-  ament_target_dependencies(pca9685 rclcpp)
+ament_target_dependencies(pca9685 rclcpp)
 
 rosidl_target_interfaces(pca9685
   ${PROJECT_NAME} "rosidl_typesupport_cpp")
@@ -52,6 +63,7 @@ rosidl_target_interfaces(pca9685
 install(TARGETS
   joy
   pca9685
+  realsense
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -66,7 +78,21 @@ if(BUILD_TESTING)
   # the following line skips cpplint (only works in a git repo)
   # uncomment the line when this package is not in a git repo
   #set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(${PROJECT_NAME}_test test/realsense_test.cpp)
+  target_include_directories(${PROJECT_NAME}_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+  ament_target_dependencies(${PROJECT_NAME}_test
+    realsense2
+  )
+  target_link_libraries(${PROJECT_NAME}_test ${realsense2_LIBRARY})
+  install (TARGETS
+    ${PROJECT_NAME}_test
+    DESTINATION lib/${PROJECT_NAME}
+  )
+  # ament_lint_auto_find_test_dependencies()
 endif()
 
 ament_package()

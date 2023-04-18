@@ -78,7 +78,7 @@ docker buildx build \
 
 ## Docker For Development
 ```bash
-export JETSON_IP=192.168.68.68
+export JETSON_IP=
 
 function BUILD_AND_RUN(){
   docker -H $JETSON_IP pull ${REGISTRY}/ros2_base2:latest
@@ -104,11 +104,8 @@ docker run \
   --gpus all \
   --privileged \
   -e DISPLAY \
-  -v /dev:/dev \
-  -v /proc:/proc \
-  -v /sys:/sys \
-  -v `pwd`/ros2_ws/src:/home/dev/ros2_ws/src \
-  -v `pwd`/ros2_ws_tutorial/src:/home/dev/ros2_ws_tutorial/src \
+  -v `pwd`/ros2_ws/src:/root/ros2_ws/src \
+  -v `pwd`/ros2_ws_tutorial/src:/root/ros2_ws_tutorial/src \
   ${REGISTRY}/ros2_base2:latest \
   bash 
 ```
@@ -122,7 +119,7 @@ docker buildx build \
   --platform linux/amd64,linux/arm64 \
   -f realsense.Dockerfile \
   --build-arg BASE_IMAGE=${REGISTRY}/ros2_base2:latest \
-  -t ${REGISTRY}/ros_realsense:latest \
+  -t ${REGISTRY}/ros2_realsense:latest \
   --push .
 
 # on jetson run only once
@@ -131,14 +128,14 @@ sudo curl https://raw.githubusercontent.com/IntelRealSense/librealsense/master/c
   && sudo udevadm trigger
 
 docker run \
-  --name ros_realsense \
+  --name ros2_realsense \
   --rm \
   -it \
   --runtime nvidia \
   --network host \
   --gpus all \
   --privileged \
-  ${REGISTRY}/ros_realsense:latest \
+  ${REGISTRY}/ros2_realsense:latest \
   bash
 
 # to test run the following in the docker container
@@ -191,7 +188,7 @@ docker run \
   -e DISPLAY \
   --runtime nvidia \
   --gpus all \
-  ${REGISTRY}/ros_realsense:latest \
+  ${REGISTRY}/ros2_realsense:latest \
   bash
 
   -v /dev/input:/dev/input \
