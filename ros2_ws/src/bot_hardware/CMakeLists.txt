@@ -37,6 +37,23 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 )
 ament_export_dependencies(rosidl_default_runtime) # for custom message
 
+# My Realsense Wrapper library
+include_directories(rs_wrapper_lib include/rs_wrapper_lib)
+set(RS_WRAPPER_HEADER_FILES include/rs_wrapper_lib/rs_wrapper_lib.hpp)
+add_library(rs_wrapper_lib src/rs_wrapper_lib.cpp ${RS_WRAPPER_HEADER_FILES})
+ament_export_targets(rs_wrapper_lib HAS_LIBRARY_TARGET)
+install(
+  DIRECTORY include/rs_wrapper_lib
+  DESTINATION include
+)
+install(
+  TARGETS rs_wrapper_lib
+  EXPORT rs_wrapper_lib
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include/rs_wrapper_lib
+)
 
 # executable
 add_executable(joy src/joy.cpp)
@@ -79,7 +96,7 @@ if(BUILD_TESTING)
   # uncomment the line when this package is not in a git repo
   #set(ament_cmake_cpplint_FOUND TRUE)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(${PROJECT_NAME}_test test/realsense_test.cpp)
+  ament_add_gtest(${PROJECT_NAME}_test test/realsense_test.cpp test/rs_wrapper_lib_test.cpp)
   target_include_directories(${PROJECT_NAME}_test PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
@@ -87,7 +104,10 @@ if(BUILD_TESTING)
   ament_target_dependencies(${PROJECT_NAME}_test
     realsense2
   )
-  target_link_libraries(${PROJECT_NAME}_test ${realsense2_LIBRARY})
+  target_link_libraries(${PROJECT_NAME}_test
+    ${realsense2_LIBRARY}
+    rs_wrapper_lib
+  )
   install (TARGETS
     ${PROJECT_NAME}_test
     DESTINATION lib/${PROJECT_NAME}

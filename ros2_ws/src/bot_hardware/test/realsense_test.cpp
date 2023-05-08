@@ -7,7 +7,7 @@
 #include <mutex>
 #include <thread>
 
-// TEST(realsense_test, imu_test_wait_for_frame)
+// TEST(realsense_test, imu_test_wait_for_frame_D435i)
 // {
 //   rs2::pipeline pipe;
 //   rs2::config cfg;
@@ -33,7 +33,7 @@
 //   }
 // }
 
-// TEST(realsense_test, imu_test_callback)
+// TEST(realsense_test, imu_test_callback_D435i)
 // {
 //   auto callback = [&](const rs2::frame &frame)
 //   {
@@ -57,7 +57,8 @@
 //   rs_cfg_.enable_stream(RS2_STREAM_GYRO);
 //   rs_cfg_.enable_stream(RS2_STREAM_DEPTH); // , 256, 144, RS2_FORMAT_Z16, 90
 
-//   rs2::pipeline_profile profiles = pipe.start(rs_cfg_, callback);
+//   std::this_thread::sleep_for(std::chrono::milliseconds(500));
+//   pipe.start(rs_cfg_, callback);
 
 //   std::cout << "RealSense callback sample" << std::endl
 //             << std::endl;
@@ -76,12 +77,15 @@ TEST(realsense_test, t260_and_d435)
     {
       std::cout << "nonIMU data" << std::endl;
     }
-    else
+    else if (frame.is<rs2::motion_frame>())
     {
       auto motion = frame.as<rs2::motion_frame>();
       const auto &stream_type = motion.get_profile().stream_type();
       std::cout << "gyro: " << (stream_type == RS2_STREAM_GYRO)
                 << ", accel: " << (stream_type == RS2_STREAM_ACCEL) << std::endl;
+    }else if(frame.is<rs2::pose_frame>())
+    {
+      std::cout << "pose frame" << std::endl;
     }
   };
 
@@ -104,6 +108,7 @@ TEST(realsense_test, t260_and_d435)
     {
       rs_cfg_t265.enable_stream(RS2_STREAM_ACCEL);
       rs_cfg_t265.enable_stream(RS2_STREAM_GYRO);
+      rs_cfg_t265.enable_stream(RS2_STREAM_POSE);
     }
   }
 

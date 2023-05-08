@@ -73,6 +73,7 @@ RUN mkdir -p /root/ros2_pre_installed/src \
 
 RUN curl https://raw.githubusercontent.com/IntelRealSense/librealsense/master/config/99-realsense-libusb.rules \
   -o /etc/udev/rules.d/99-realsense-libusb.rules
+
 RUN echo '# Intel Realsense PYTHON PATH' >> /etc/bash.bashrc \
   && echo 'PYTHONPATH=$PYTHONPATH:'"$REALSENSE_DIR"'/usr/local/lib' >> /etc/bash.bashrc \
   && echo "source /root/ros2_pre_installed/install/setup.bash" >> /etc/bash.bashrc
