@@ -29,6 +29,7 @@ endif()
 # custom message
 set(msg_files
   "msg/Joy2.msg"
+  "msg/Control.msg"
 )
 find_package(rosidl_default_generators REQUIRED) # for custom message
 rosidl_generate_interfaces(${PROJECT_NAME} 
@@ -57,29 +58,35 @@ install(
 
 # Joy Node
 add_executable(joy src/joy.cpp)
-ament_target_dependencies(joy rclcpp)
+ament_target_dependencies(joy rclcpp) 
+# expose the custom message types inside this package
+# I think it is not required when the custom messages are used in different package
+rosidl_target_interfaces(joy
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 # Realsense Executable Node
 add_executable(realsense src/realsense.cpp)
 target_link_libraries(realsense ${realsense2_LIBRARY} rs_wrapper_lib)
 ament_target_dependencies(realsense rclcpp nav_msgs realsense2)
 
-# expose the custom message types inside this package
-# I think it is not required when the custom messages are used in different package
-rosidl_target_interfaces(joy
-  ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
-
+# PCA9685 node to communicate to hardware board
 add_executable(pca9685 src/pca9685.cpp)
 ament_target_dependencies(pca9685 rclcpp)
-
 rosidl_target_interfaces(pca9685
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
+# joy2pca9685 node to convert joystick command to Control command
+add_executable(joy2pca9685 src/joy2pca9685.cpp)
+ament_target_dependencies(joy2pca9685 rclcpp)
+rosidl_target_interfaces(joy2pca9685
   ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 
 install(TARGETS
   joy
   pca9685
+  joy2pca9685
   realsense
   DESTINATION lib/${PROJECT_NAME}
 )

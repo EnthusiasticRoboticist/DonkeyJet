@@ -4,7 +4,7 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include "rclcpp/rclcpp.hpp"
-#include "bot_hardware/msg/joy2.hpp"
+#include "bot_hardware/msg/control.hpp"
 
 using std::placeholders::_1;
 
@@ -14,18 +14,30 @@ using std::placeholders::_1;
 #define PCA9685_LED0_ON_L 0x06
 #define PCA9685_PRESCALE 0xFE
 
-#define THROTTLE_CHANNEL 0
-#define STEERING_CHANNEL 1
+#define THROTTLE_PWM_CHANNEL 0
+#define STEERING_PWM_CHANNEL 1
 
-#define JOYSTICK_THROTTLE_AXIS 1
-#define JOYSTICK_STEERING_AXIS 2
 
+/**
+ * @brief This class can be used to map a float 
+ * value between -1 and 1 to int value for the 
+ * servos based on the PWM frequency.
+ */
 class Float2ServoMap
 {
 public:
   using Ptr = std::shared_ptr<Float2ServoMap>;
 
-  static Float2ServoMap::Ptr make(float freq, float minMiliSec, float maxMiliSec, unsigned int maxPWM)
+  /**
+   * @brief builder function
+   * 
+   * @param[in] freq        Desired frequency of the PWM signal
+   * @param[in] minMiliSec  Minimum high time of the PWM singal in milliseconds
+   * @param[in] maxMiliSec  Maximum hight time of the PWM singnal in milliseconds
+   * @param[in] maxPWM      The maximum value for the PWM (defining the resolution for PWM signal generator)
+   * @return Float2ServoMap::Ptr 
+   */
+  static Float2ServoMap::Ptr create(float freq, float minMiliSec, float maxMiliSec, unsigned int maxPWM)
   {
     return std::make_shared<Float2ServoMap>(freq, minMiliSec, maxMiliSec, maxPWM);
   }
@@ -45,8 +57,6 @@ public:
     float Fmax = 1.0;
     m_ = (maxPWMv - minPWMv) / (Fmax - Fmin);
     b_ = minPWMv - m_ * Fmin;
-    std::cout << "minPWMv " << minPWMv << " maxPWMv " << maxPWMv << std::endl;
-    std::cout << "m_ " << m_ << " b_ " << b_ << std::endl;
   }
 private:
   float m_, b_;
@@ -58,8 +68,8 @@ public:
   PCA9685() : Node("pca9685")
   {
     init_hardware();
-    js_subscription_ = this->create_subscription<bot_hardware::msg::Joy2>(
-        "/joy", 10, std::bind(&PCA9685::js_callback, this, _1));
+    control_subscription_ = this->create_subscription<bot_hardware::msg::Control>(
+        "/control", 10, std::bind(&PCA9685::control_callback, this, _1));
   }
 
   ~PCA9685()
@@ -75,8 +85,8 @@ private:
   {
     // Set the PWM frequency
     pwm_freq_ = 60.0;
-    steeringMap = Float2ServoMap::make(pwm_freq_, 1.0, 2.0, 4095u);
-    throttleMap = Float2ServoMap::make(pwm_freq_, 1.0, 2.0, 4095u);
+    steeringMap = Float2ServoMap::create(pwm_freq_, 1.0, 2.0, 4095u);
+    throttleMap = Float2ServoMap::create(pwm_freq_, 1.0, 2.0, 4095u);
 
     // Get the I2C device file descriptor
     i2c_fd_ = open("/dev/i2c-1", O_RDWR);
@@ -153,28 +163,36 @@ private:
     return buf[0];
   }
 
-  void js_callback(const bot_hardware::msg::Joy2::SharedPtr msg)
+  void control_callback(const bot_hardware::msg::Control::SharedPtr control_msg)
   {
-    if (msg->axis == JOYSTICK_THROTTLE_AXIS)
+    if (control_msg->throttle != bot_hardware::msg::Control::INVALID)
     {
-      setThrottle(msg->axis_value);
-    } else if (msg->axis == JOYSTICK_STEERING_AXIS)
+      setThrottle(control_msg->throttle);
+    } else if (control_msg->steering != bot_hardware::msg::Control::INVALID)
     {
-      setSteering(msg->axis_value);
+      setSteering(control_msg->steering);
     }
   }
 
-  // between -1 and 1 respectively full backware and full forward
+  /**
+   * @brief Set the Throttle object
+   * 
+   * @param[in] throttle between -1 and 1 respectively full backward and full forward
+   */
   void setThrottle(float throttle)
   {
     throttle *= -1.0;
     if (std::abs(throttle) < 0.001 ) throttle = 0;
     uint16_t pwm = (uint16_t)(std::round(throttleMap->calPwm(throttle))) & 0x0FFF ;
     RCLCPP_DEBUG(this->get_logger(), "THROTTLE %d, RAW %f", pwm, throttle);
-    set_pwm(THROTTLE_CHANNEL, 0, pwm);
+    set_pwm(THROTTLE_PWM_CHANNEL, 0, pwm);
   }
 
-  // between -1 and 1 respectively
+  /**
+   * @brief Set the Steering object
+   * 
+   * @param steering between -1 and 1
+   */
   void setSteering(float steering)
   {
     steering *= -1.0;
@@ -182,10 +200,10 @@ private:
     steering += 0.29;
     uint16_t pwm = (uint16_t)(std::round(steeringMap->calPwm(steering))) & 0x0FFF ;
     RCLCPP_DEBUG(this->get_logger(), "STEERING %d, RAW %f", pwm, steering);
-    set_pwm(STEERING_CHANNEL, 0, pwm);
+    set_pwm(STEERING_PWM_CHANNEL, 0, pwm);
   }
 
-  rclcpp::Subscription<bot_hardware::msg::Joy2>::SharedPtr js_subscription_;
+  rclcpp::Subscription<bot_hardware::msg::Control>::SharedPtr control_subscription_;
   int i2c_fd_;
   uint8_t dev_address_;
   float pwm_freq_;
