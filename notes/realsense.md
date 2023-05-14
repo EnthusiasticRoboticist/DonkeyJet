@@ -67,7 +67,8 @@ ros2 run tf2_tools view_frames.py
 ros2 launch realsense2_camera rs_launch.py
 ros2 run tf2_ros tf2_echo camera_pose_frame odom_frame
 
-./build/bot_hardware/bot_hardware_test --gtest_filter="realsense_lib.*"
+reset; colcon build && \
+  ./build/bot_hardware/bot_hardware_test --gtest_filter="realsense_lib.*"
 ```
 
 ## Expected IMU type

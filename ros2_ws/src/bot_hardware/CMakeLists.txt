@@ -55,13 +55,13 @@ install(
   INCLUDES DESTINATION include/rs_wrapper_lib
 )
 
-# executable
+# Joy Node
 add_executable(joy src/joy.cpp)
 ament_target_dependencies(joy rclcpp)
 
-# executable
+# Realsense Executable Node
 add_executable(realsense src/realsense.cpp)
-target_link_libraries(realsense ${realsense2_LIBRARY})
+target_link_libraries(realsense ${realsense2_LIBRARY} rs_wrapper_lib)
 ament_target_dependencies(realsense rclcpp nav_msgs realsense2)
 
 # expose the custom message types inside this package
