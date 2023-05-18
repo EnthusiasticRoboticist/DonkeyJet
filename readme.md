@@ -33,9 +33,15 @@ docker buildx create --append --driver-opt network=host --config=buildkitd-amd64
 ```bash
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -f ros2_base2.Dockerfile \
+  -f ros2_base.Dockerfile \
   -t ${REGISTRY}/ros2_base2:latest \
   --push .
+
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f ros2_base.Dockerfile \
+  -t ${REGISTRY}/ros2_base2:latest \
+  --output=tar .
 
 # test the images
 docker pull ${REGISTRY}/ros2_base2:latest

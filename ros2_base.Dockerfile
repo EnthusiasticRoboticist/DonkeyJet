@@ -6,141 +6,232 @@ FROM nvcr.io/nvidia/l4t-base:r32.5.0 as arm64_base
 
 FROM ${TARGETARCH}_base as dev
 
+SHELL ["/bin/bash", "-c"] 
+ENV SKIP_ROSDEP=""
+
 # https://github.com/NVIDIA-AI-IOT/ros2_jetson/blob/main/docker/DockerFile.l4tbase.ros2.foxy
 # https://docs.ros.org/en/foxy/Installation/Alternatives/Ubuntu-Development-Setup.html#id9
 # https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html
 
-ARG ROS_PKG=desktop
 ENV ROS_DISTRO=foxy
 ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
 ENV ROS_PYTHON_VERSION=3
 ENV SHELL /bin/bash
-SHELL ["/bin/bash", "-c"] 
 
 ENV DEBIAN_FRONTEND=noninteractive
-
+ENV RTI_NC_LICENSE_ACCEPTED=yes
 
 # change the locale from POSIX to UTF-8
 RUN apt-get update && apt-get install -y locales
 RUN locale-gen en_US en_US.UTF-8 && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 ENV LANG=en_US.UTF-8
 
+RUN apt update \
+  && apt upgrade -y \
+  && apt install -y \
+    software-properties-common \
+    curl \
+    wget \
+    gnupg2 \
+    lsb-release \
+    software-properties-common \
+    terminator \
+    build-essential \
+    cmake \
+    git \
+    python3 \
+    libpython3-dev \
+    xorg-dev \
+    libusb-1.0-0-dev \
+    libxinerama-dev \
+    python3 \
+    python3-dev \
+    libpython3.8-dev \
+    gcc-8 g++-8 \
+  && rm /usr/bin/gcc /usr/bin/g++ \
+  && ln -s gcc-8 /usr/bin/gcc \
+  && ln -s g++-8 /usr/bin/g++ \
+  && add-apt-repository universe
 
-# add the ROS deb repo to the apt sources list
-RUN apt-get update && apt-get upgrade -y && apt-get install -y \
-  curl \
-  wget \
-  gnupg2 \
-  lsb-release \
-  software-properties-common \
-  terminator \
-  build-essential \
-  cmake \
-  git \
-  libbullet-dev \
-  python3 \
-  libpython3-dev
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
-RUN curl \
-  -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
-  -o /usr/share/keyrings/ros-archive-keyring.gpg
-
-RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | \
-  tee /etc/apt/sources.list.d/ros2.list > /dev/null
-
-RUN apt-get update && apt-get upgrade -y && apt-get install -y \
-  python3-colcon-common-extensions \
-  python3-flake8 \
+RUN apt update && apt install -y \
+  libbullet-dev \
   python3-pip \
-  python3-numpy \
   python3-pytest-cov \
+  # install some pip packages needed for testing
+  && python3 -m pip install -U \
+    argcomplete \
+    flake8-blind-except \
+    flake8-builtins \
+    flake8-class-newline \
+    flake8-comprehensions \
+    flake8-deprecated \
+    flake8-docstrings \
+    flake8-import-order \
+    flake8-quotes \
+    pytest-repeat \
+    pytest-rerunfailures \
+    pytest \
+    # install Fast-RTPS dependencies
+  && apt install --no-install-recommends -y \
+    libasio-dev \
+    libtinyxml2-dev \
+    # install Cyclone DDS dependencies
+    libcunit1-dev
+  
+RUN apt install -y \
+  python3-colcon-common-extensions \
+  python3-numpy \
   python3-rosdep \
-  python3-setuptools \
   python3-vcstool \
   python3-rosinstall-generator \
-  libasio-dev \
-  libtinyxml2-dev \
-  libcunit1-dev \
-  && add-apt-repository universe
+  && python -m pip install pip install setuptools==58.2.0
 
-RUN python3 -m pip install -U \
-  argcomplete \
-  flake8-blind-except \
-  flake8-builtins \
-  flake8-class-newline \
-  flake8-comprehensions \
-  flake8-deprecated \
-  flake8-docstrings \
-  flake8-import-order \
-  flake8-quotes \
-  pytest-repeat \
-  pytest-rerunfailures \
-  pytest 
+# PCL 1.11 from source. PCL 1.8 from apt has some issues
+# which we face with rtab_map
+
+## Dependencies
+RUN apt install -y libflann-dev \
+  libvtk6-dev \
+  libvtk6-qt-dev \
+  libpcap-dev \
+  libboost-filesystem-dev \
+  libboost-iostreams-dev \
+  libboost-system-dev \
+  libboost-date-time-dev
+
+## Original PCL installation
+RUN wget https://github.com/PointCloudLibrary/pcl/archive/refs/tags/pcl-1.11.1.tar.gz \
+  && tar xvf pcl-1.11.1.tar.gz && rm pcl-1.11.1.tar.gz \
+  && cd pcl-pcl-1.11.1 \
+  && mkdir build && cd build \
+  && cmake .. \
+  && make -j`nproc` install
+
+# Sould be Space seperated stirng
+ENV ROSDEP_SKIP_PACKAGES="libpcl-dev"
+
+
+# get ROS2 code
+RUN mkdir -p ${ROS_ROOT}/src \
+  && cd ${ROS_ROOT} \
+  && vcs import --input https://raw.githubusercontent.com/ros2/ros2/foxy/ros2.repos src
 
 RUN python3 -m pip install --upgrade pip && python3 -m pip install --upgrade --no-cache-dir --verbose cmake
 RUN cmake --version
 
-ENV RTI_NC_LICENSE_ACCEPTED=yes
+RUN echo 'export ROS_PACKAGE_PATH="${ROS_ROOT}/src"' > /setup_ROS_PACKAGE_PATH.sh \
+  && echo 'for dir in ${ROS_ROOT}/src/*; do export ROS_PACKAGE_PATH="$dir:$ROS_PACKAGE_PATH"; done' >> /setup_ROS_PACKAGE_PATH.sh \
+  && echo "source /setup_ROS_PACKAGE_PATH.sh >> /etc/bash.bashrc"
 
-# https://answers.ros.org/question/396439/setuptoolsdeprecationwarning-setuppy-install-is-deprecated-use-build-and-pip-and-other-standards-based-tools/
-RUN python -m pip install setuptools==58.2.0\
-  && python -c "import setuptools; print(setuptools.__version__, 'HEYEHEYHEYHEY')" \
-  && mkdir -p ${ROS_ROOT}/src \
-  && cd ${ROS_ROOT} \
-  && rosinstall_generator --deps --rosdistro ${ROS_DISTRO} ${ROS_PKG} \
-		launch_xml \
-		launch_yaml \
-		launch_testing \
-		launch_testing_ament_cmake \
-		demo_nodes_cpp \
-		demo_nodes_py \
-		example_interfaces \
-		camera_calibration_parsers \
-		camera_info_manager \
-		cv_bridge \
-		v4l2_camera \
-		vision_opencv \
-		vision_msgs \
-		image_geometry \
-		image_pipeline \
-		image_transport \
-		compressed_image_transport \
-		compressed_depth_image_transport \
-		> ros2.${ROS_DISTRO}.${ROS_PKG}.rosinstall \
-    && cat ros2.${ROS_DISTRO}.${ROS_PKG}.rosinstall \
-    && vcs import src < ros2.${ROS_DISTRO}.${ROS_PKG}.rosinstall \
-  # https://github.com/dusty-nv/jetson-containers/issues/181
-  && rm -r ${ROS_ROOT}/src/ament_cmake \
-  && git -C ${ROS_ROOT}/src/ clone https://github.com/ament/ament_cmake -b ${ROS_DISTRO} \
-  # install dependencies using rosdep
-  && apt-get update \
-  && cd ${ROS_ROOT} \
-  && rosdep init  \
+RUN cd ${ROS_ROOT} && source /setup_ROS_PACKAGE_PATH.sh \
+  && apt upgrade -y \
+  && rosdep init \
   && rosdep update \
-  && rosdep install -y \
-      --ignore-src \
-      --from-paths src \
-      --rosdistro ${ROS_DISTRO} \
-  && colcon build \
-    --merge-install \
-    --cmake-args -DCMAKE_BUILD_TYPE=Release 
+  && rosinstall_generator desktop --rosdistro ${ROS_DISTRO} --deps --exclude RPP | vcs import src \
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES"
 
-RUN echo "source $ROS_ROOT/install/setup.bash" >> /etc/bash.bashrc
+RUN cd ${ROS_ROOT} \
+  && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
-# RUN apt-get install -y \
-#   libevdev-dev \
-#   libudev-dev \
-#   jstest-gtk \
-#   ros-${ROS_DISTRO}-rqt* \
-#   ros-${ROS_DISTRO}-navigation2 \
-#   ros-${ROS_DISTRO}-nav2-bringup \
-#   ros-${ROS_DISTRO}-turtlebot3* \
-#   ros-${ROS_DISTRO}-joint-state-publisher-gui \
-#   ros-${ROS_DISTRO}-robot-localization \
-#   ros-${ROS_DISTRO}-xacro \
-#   ros-${ROS_DISTRO}-ros2-control
+RUN . ${ROS_ROOT}/install/local_setup.bash \
+  && echo "source $ROS_ROOT/install/setup.bash" >> /etc/bash.bashrc \
+  && echo "source $ROS_ROOT/install/local_setup.bash" >> /etc/bash.bashrc
+
+RUN TEST_PLUGINLIB_PACKAGE="${ROS_ROOT}/build/pluginlib/pluginlib_enable_plugin_testing/install/test_pluginlib__test_pluginlib/share/test_pluginlib/package.xml" && \
+  sed -i '/<\/description>/a <license>BSD<\/license>' $TEST_PLUGINLIB_PACKAGE && \
+  sed -i '/<\/description>/a <maintainer email="michael@openrobotics.org">Michael Carroll<\/maintainer>' $TEST_PLUGINLIB_PACKAGE && \
+  cat $TEST_PLUGINLIB_PACKAGE
+
+# To install ROS packages from source
+RUN mkdir -p /root/ros2_pre_installed/src
+
+
+# pcl_ros
+RUN cd /root/ros2_pre_installed \
+  && git clone https://github.com/ros-perception/perception_pcl.git src/perception_pcl \
+  && cd src/perception_pcl \
+  && git checkout foxy-devel \
+  && cd - \
+  && source $ROS_ROOT/install/setup.bash \
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
+  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select pcl_ros
+
+# BehaviorTree.CPP
+RUN cd /root/ros2_pre_installed \
+  && git clone https://github.com/BehaviorTree/behaviortree_cpp_v3-release.git src/behaviortree_cpp_v3-release \
+  && cd src/behaviortree_cpp_v3-release \
+  && git checkout debian/foxy/behaviortree_cpp_v3 \
+  && cd - \
+  && source $ROS_ROOT/install/setup.bash \
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
+  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select behaviortree_cpp_v3
+
+#ompl
+RUN git clone https://github.com/ompl/ompl.git \
+  && cd ompl \
+  && mkdir build && cd build \
+  && cmake .. && make -j`nproc` install
+
+# gazebo_ros_pkgs & navigation2
+RUN curl -sSL http://get.gazebosim.org | sh \
+  && cd /root/ros2_pre_installed \
+  && git clone -b foxy https://github.com/ros-perception/image_common.git src/image_common \
+  && git clone -b foxy https://github.com/ros-simulation/gazebo_ros_pkgs.git src/gazebo_ros_pkgs \
+  && source $ROS_ROOT/install/setup.bash \
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
+  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to-regex gazebo*
+
+
+# navigation2
+RUN cd /root/ros2_pre_installed \
+  && git clone https://github.com/ros-planning/navigation2.git src/navigation2 \
+  && cd src/navigation2 \
+  && git checkout foxy-devel \
+  && cd - \
+  && source $ROS_ROOT/install/setup.bash \
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
+  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to-regex nav2* navigation2 smac_planner
+
+# OctoMap
+ENV ROSDEP_SKIP_PACKAGES="$ROSDEP_SKIP_PACKAGES liboctomap"
+RUN git clone https://github.com/OctoMap/octomap.git \
+  && cd octomap/octomap \
+  && mkdir build && cd build && cmake .. && make -j`nproc` install \
+  && cd /root/ros2_pre_installed \
+  && git clone https://github.com/OctoMap/octomap_msgs.git src/octomap_msgs \
+  && cd src/octomap_msgs \
+  && git checkout ros2 \
+  && cd - \
+  && source $ROS_ROOT/install/setup.bash \
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
+  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select octomap_msgs \
+  && git clone https://github.com/OctoMap/octomap_ros.git src/octomap_ros \
+  && cd src/octomap_ros \
+  && git checkout ros2 \
+  && cd - \
+  && source $ROS_ROOT/install/setup.bash \
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
+  && colcon build --merge-install --install-base "$ROS_ROOT/install" --packages-select octomap_ros
+
+# rtab-map
+RUN cd /root/ros2_pre_installed \
+  && git clone https://github.com/introlab/rtabmap.git src/rtabmap \
+  && cd src/rtabmap/ \
+  && git checkout 0.21.1-foxy \
+  && cd - \
+  && git clone --branch ros2 https://github.com/introlab/rtabmap_ros.git src/rtabmap_ros \
+  && cd src/rtabmap_ros \
+  && git checkout 0.21.1-foxy \
+  && grep -l -r '<octomap_msgs\/conversions.h>' | xargs sed -i "s/<octomap_msgs\/conversions.h>/<octomap_msgs\/octomap_msgs\/conversions.h>/g" \
+  && cd - \
+  && source $ROS_ROOT/install/setup.bash \
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
+  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select-regex rtabmap*
 
 RUN mkdir -p /root/ros2_ws/src && mkdir /root/ros2_ws_tutorial
 WORKDIR /root/ros2_ws

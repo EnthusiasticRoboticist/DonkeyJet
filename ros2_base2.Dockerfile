@@ -6,16 +6,17 @@ FROM nvcr.io/nvidia/l4t-base:r32.5.0 as arm64_base
 
 FROM ${TARGETARCH}_base as dev
 
+SHELL ["/bin/bash", "-c"] 
+ENV SKIP_ROSDEP=""
+
 # https://github.com/NVIDIA-AI-IOT/ros2_jetson/blob/main/docker/DockerFile.l4tbase.ros2.foxy
 # https://docs.ros.org/en/foxy/Installation/Alternatives/Ubuntu-Development-Setup.html#id9
 # https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html
 
-ARG ROS_PKG=all
 ENV ROS_DISTRO=foxy
 ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
 ENV ROS_PYTHON_VERSION=3
 ENV SHELL /bin/bash
-SHELL ["/bin/bash", "-c"] 
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RTI_NC_LICENSE_ACCEPTED=yes
@@ -40,6 +41,16 @@ RUN apt update \
     git \
     python3 \
     libpython3-dev \
+    xorg-dev \
+    libusb-1.0-0-dev \
+    libxinerama-dev \
+    python3 \
+    python3-dev \
+    libpython3.8-dev \
+    gcc-8 g++-8 \
+  && rm /usr/bin/gcc /usr/bin/g++ \
+  && ln -s gcc-8 /usr/bin/gcc \
+  && ln -s g++-8 /usr/bin/g++ \
   && add-apt-repository universe
 
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
@@ -80,6 +91,30 @@ RUN apt install -y \
   python3-rosinstall-generator \
   && python -m pip install pip install setuptools==58.2.0
 
+# PCL 1.11 from source. PCL 1.8 from apt has some issues
+# which we face with rtab_map
+
+## Dependencies
+RUN apt install -y libflann-dev \
+  libvtk6-dev \
+  libvtk6-qt-dev \
+  libpcap-dev \
+  libboost-filesystem-dev \
+  libboost-iostreams-dev \
+  libboost-system-dev \
+  libboost-date-time-dev
+
+## Original PCL installation
+RUN wget https://github.com/PointCloudLibrary/pcl/archive/refs/tags/pcl-1.11.1.tar.gz \
+  && tar xvf pcl-1.11.1.tar.gz && rm pcl-1.11.1.tar.gz \
+  && cd pcl-pcl-1.11.1 \
+  && mkdir build && cd build \
+  && cmake .. \
+  && make -j`nproc` install
+
+# Should be Space seperated stirng
+ENV ROSDEP_SKIP_PACKAGES="libpcl-dev"
+
 
 # get ROS2 code
 RUN mkdir -p ${ROS_ROOT}/src \
@@ -98,7 +133,7 @@ RUN cd ${ROS_ROOT} && source /setup_ROS_PACKAGE_PATH.sh \
   && rosdep init \
   && rosdep update \
   && rosinstall_generator desktop --rosdistro ${ROS_DISTRO} --deps --exclude RPP | vcs import src \
-  && rosdep install -y -r --ignore-src --from-paths src --rosdistro ${ROS_DISTRO}
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES"
 
 RUN cd ${ROS_ROOT} \
   && colcon build --merge-install --cmake-args -DCMAKE_BUILD_TYPE=Release
@@ -106,6 +141,59 @@ RUN cd ${ROS_ROOT} \
 RUN . ${ROS_ROOT}/install/local_setup.bash \
   && echo "source $ROS_ROOT/install/setup.bash" >> /etc/bash.bashrc \
   && echo "source $ROS_ROOT/install/local_setup.bash" >> /etc/bash.bashrc
+
+RUN TEST_PLUGINLIB_PACKAGE="${ROS_ROOT}/build/pluginlib/pluginlib_enable_plugin_testing/install/test_pluginlib__test_pluginlib/share/test_pluginlib/package.xml" && \
+  sed -i '/<\/description>/a <license>BSD<\/license>' $TEST_PLUGINLIB_PACKAGE && \
+  sed -i '/<\/description>/a <maintainer email="michael@openrobotics.org">Michael Carroll<\/maintainer>' $TEST_PLUGINLIB_PACKAGE && \
+  cat $TEST_PLUGINLIB_PACKAGE
+
+# To install ROS packages from source
+RUN mkdir -p /root/ros2_pre_installed/src
+
+#ompl
+RUN git clone https://github.com/ompl/ompl.git \
+  && cd ompl \
+  && mkdir build && cd build \
+  && cmake .. && make -j`nproc` install
+
+# OctoMap
+ENV ROSDEP_SKIP_PACKAGES="$ROSDEP_SKIP_PACKAGES liboctomap"
+RUN git clone https://github.com/OctoMap/octomap.git \
+  && cd octomap/octomap \
+  && mkdir build && cd build && cmake .. && make -j`nproc` install
+
+# pcl_ros
+# BehaviorTree.CPP
+# gazebo_ros_pkgs
+# navigation2
+# OctoMap
+# rtab-map
+RUN cd /root/ros2_pre_installed \
+  && git clone https://github.com/ros-perception/perception_pcl.git src/perception_pcl \
+  && cd src/perception_pcl \
+  && git checkout foxy-devel \
+  && cd - \
+  && git clone -b debian/foxy/behaviortree_cpp_v3 https://github.com/BehaviorTree/behaviortree_cpp_v3-release.git src/behaviortree_cpp_v3-release \
+  && curl -sSL http://get.gazebosim.org | sh \
+  && git clone -b foxy https://github.com/ros-perception/image_common.git src/image_common \
+  && git clone -b foxy https://github.com/ros-simulation/gazebo_ros_pkgs.git src/gazebo_ros_pkgs \
+  && git clone -b foxy-devel https://github.com/ros-planning/navigation2.git src/navigation2 \
+  && git clone -b ros2 https://github.com/OctoMap/octomap_msgs.git src/octomap_msgs \
+  && git clone -b ros2 https://github.com/OctoMap/octomap_ros.git src/octomap_ros \
+  && git clone https://github.com/introlab/rtabmap.git src/rtabmap \
+  && cd src/rtabmap/ \
+  && git checkout 0.21.1-foxy \
+  && cd - \
+  && git clone --branch ros2 https://github.com/introlab/rtabmap_ros.git src/rtabmap_ros \
+  && cd src/rtabmap_ros \
+  && git checkout 0.21.1-foxy \
+  && grep -l -r '<octomap_msgs\/conversions.h>' | xargs sed -i "s/<octomap_msgs\/conversions.h>/<octomap_msgs\/octomap_msgs\/conversions.h>/g" \
+  && cd - \
+  && source $ROS_ROOT/install/setup.bash \
+  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
+  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to-regex pcl_ros nav2* rtabmap*
+
+# behaviortree_cpp_v3 gazebo* nav2* navigation2 smac_planner octomap_msgs octomap_ros rtabmap*
 
 RUN mkdir -p /root/ros2_ws/src && mkdir /root/ros2_ws_tutorial
 WORKDIR /root/ros2_ws
