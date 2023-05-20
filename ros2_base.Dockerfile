@@ -112,7 +112,7 @@ RUN wget https://github.com/PointCloudLibrary/pcl/archive/refs/tags/pcl-1.11.1.t
   && cmake .. \
   && make -j`nproc` install
 
-# Sould be Space seperated stirng
+# Should be Space seperated stirng
 ENV ROSDEP_SKIP_PACKAGES="libpcl-dev"
 
 
@@ -150,76 +150,36 @@ RUN TEST_PLUGINLIB_PACKAGE="${ROS_ROOT}/build/pluginlib/pluginlib_enable_plugin_
 # To install ROS packages from source
 RUN mkdir -p /root/ros2_pre_installed/src
 
-
-# pcl_ros
-RUN cd /root/ros2_pre_installed \
-  && git clone https://github.com/ros-perception/perception_pcl.git src/perception_pcl \
-  && cd src/perception_pcl \
-  && git checkout foxy-devel \
-  && cd - \
-  && source $ROS_ROOT/install/setup.bash \
-  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
-  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select pcl_ros
-
-# BehaviorTree.CPP
-RUN cd /root/ros2_pre_installed \
-  && git clone https://github.com/BehaviorTree/behaviortree_cpp_v3-release.git src/behaviortree_cpp_v3-release \
-  && cd src/behaviortree_cpp_v3-release \
-  && git checkout debian/foxy/behaviortree_cpp_v3 \
-  && cd - \
-  && source $ROS_ROOT/install/setup.bash \
-  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
-  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select behaviortree_cpp_v3
-
 #ompl
 RUN git clone https://github.com/ompl/ompl.git \
   && cd ompl \
   && mkdir build && cd build \
   && cmake .. && make -j`nproc` install
 
-# gazebo_ros_pkgs & navigation2
-RUN curl -sSL http://get.gazebosim.org | sh \
-  && cd /root/ros2_pre_installed \
-  && git clone -b foxy https://github.com/ros-perception/image_common.git src/image_common \
-  && git clone -b foxy https://github.com/ros-simulation/gazebo_ros_pkgs.git src/gazebo_ros_pkgs \
-  && source $ROS_ROOT/install/setup.bash \
-  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
-  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to-regex gazebo*
-
-
-# navigation2
-RUN cd /root/ros2_pre_installed \
-  && git clone https://github.com/ros-planning/navigation2.git src/navigation2 \
-  && cd src/navigation2 \
-  && git checkout foxy-devel \
-  && cd - \
-  && source $ROS_ROOT/install/setup.bash \
-  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
-  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to-regex nav2* navigation2 smac_planner
-
 # OctoMap
 ENV ROSDEP_SKIP_PACKAGES="$ROSDEP_SKIP_PACKAGES liboctomap"
 RUN git clone https://github.com/OctoMap/octomap.git \
   && cd octomap/octomap \
-  && mkdir build && cd build && cmake .. && make -j`nproc` install \
-  && cd /root/ros2_pre_installed \
-  && git clone https://github.com/OctoMap/octomap_msgs.git src/octomap_msgs \
-  && cd src/octomap_msgs \
-  && git checkout ros2 \
-  && cd - \
-  && source $ROS_ROOT/install/setup.bash \
-  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
-  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select octomap_msgs \
-  && git clone https://github.com/OctoMap/octomap_ros.git src/octomap_ros \
-  && cd src/octomap_ros \
-  && git checkout ros2 \
-  && cd - \
-  && source $ROS_ROOT/install/setup.bash \
-  && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
-  && colcon build --merge-install --install-base "$ROS_ROOT/install" --packages-select octomap_ros
+  && mkdir build && cd build && cmake .. && make -j`nproc` install
 
+# pcl_ros
+# BehaviorTree.CPP
+# gazebo_ros_pkgs
+# navigation2
+# OctoMap
 # rtab-map
 RUN cd /root/ros2_pre_installed \
+  && git clone https://github.com/ros-perception/perception_pcl.git src/perception_pcl \
+  && cd src/perception_pcl \
+  && git checkout foxy-devel \
+  && cd - \
+  && git clone -b debian/foxy/behaviortree_cpp_v3 https://github.com/BehaviorTree/behaviortree_cpp_v3-release.git src/behaviortree_cpp_v3-release \
+  && curl -sSL http://get.gazebosim.org | sh \
+  && git clone -b foxy https://github.com/ros-perception/image_common.git src/image_common \
+  && git clone -b foxy https://github.com/ros-simulation/gazebo_ros_pkgs.git src/gazebo_ros_pkgs \
+  && git clone -b foxy-devel https://github.com/ros-planning/navigation2.git src/navigation2 \
+  && git clone -b ros2 https://github.com/OctoMap/octomap_msgs.git src/octomap_msgs \
+  && git clone -b ros2 https://github.com/OctoMap/octomap_ros.git src/octomap_ros \
   && git clone https://github.com/introlab/rtabmap.git src/rtabmap \
   && cd src/rtabmap/ \
   && git checkout 0.21.1-foxy \
@@ -231,7 +191,9 @@ RUN cd /root/ros2_pre_installed \
   && cd - \
   && source $ROS_ROOT/install/setup.bash \
   && rosdep install --from-paths src --ignore-src -r -y --rosdistro=$ROS_DISTRO --skip-keys="$ROSDEP_SKIP_PACKAGES" \
-  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select-regex rtabmap*
+  && colcon build --merge-install --install-base "$ROS_ROOT/install" --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to-regex pcl_ros nav2* rtabmap*
+
+# behaviortree_cpp_v3 gazebo* nav2* navigation2 smac_planner octomap_msgs octomap_ros rtabmap*
 
 RUN mkdir -p /root/ros2_ws/src && mkdir /root/ros2_ws_tutorial
 WORKDIR /root/ros2_ws

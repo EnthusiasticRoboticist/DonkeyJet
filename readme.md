@@ -1,4 +1,4 @@
-# Workspace for DonkeyJet
+# Workspace for DonkeyJet [Under ACTIVE CONSTRUCTION]
 
 Introducing my ongoing robotics project, currently named **DonkeyJet**, inspired by the [Donkey Car project](https://www.donkeycar.com/). This mobile robot is built on an RC car frame and powered by Jetson Nano, providing a hands-on platform for practicing robotics knowledge. The goal is to continually enhance its capabilities while exploring various aspects of robotics technology. While I am not certain about the name DonkeyJet, I invite you to follow me on this exciting journey of discovery as I document my progress and share insights with fellow enthusiasts in my weblog [here](https://www.enthusiasticroboticist.com/).
 

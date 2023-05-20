@@ -99,7 +99,7 @@ docker run --rm -it ros2_base2:latest bash
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   -f ros2_base2.Dockerfile \
-  -t ${REGISTRY}/ros2_base2:latest2 \
+  -t ${REGISTRY}/ros2_base2:latest \
   --push .
 
 docker run \
@@ -110,6 +110,6 @@ docker run \
   --network host \
   --gpus all \
   -e DISPLAY \
-  ${REGISTRY}/ros2_base2:latest2 \
+  ${REGISTRY}/ros2_base2:latest \
   bash
 ```

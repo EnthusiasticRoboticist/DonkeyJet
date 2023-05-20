@@ -33,7 +33,7 @@ docker run \
   -v /dev/bus/usb/:/dev/bus/usb/ \
   -v `pwd`/ros2_ws/src:/root/ros2_ws/src \
   -v `pwd`/ros2_ws_tutorial/src:/root/ros2_ws_tutorial/src \
-  ${REGISTRY}/ros2_realsense_latest:latest \
+  ${REGISTRY}/ros2_realsense:latest \
   bash 
 
 # ${REGISTRY}/ros2_realsense:latest \
@@ -69,6 +69,16 @@ ros2 run tf2_ros tf2_echo camera_pose_frame odom_frame
 
 reset; colcon build && \
   ./build/bot_hardware/bot_hardware_test --gtest_filter="realsense_lib.*"
+```
+
+# build realsense image
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f realsense.Dockerfile \
+  --build-arg BASE_IMAGE=${REGISTRY}/ros2_base2:latest2 \
+  -t ${REGISTRY}/ros2_realsense:latest \
+  --push .
 ```
 
 ## Expected IMU type
