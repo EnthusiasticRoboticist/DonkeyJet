@@ -1,13 +1,12 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <librealsense2/rs.hpp>
-#include <iostream>
 #include <map>
 #include <chrono>
 #include <mutex>
 #include <thread>
 
-// TEST(realsense_test, imu_test_wait_for_frame_D435i)
+// TEST(realsense_test, D435i_fetch)
 // {
 //   rs2::pipeline pipe;
 //   rs2::config cfg;
@@ -75,7 +74,7 @@ TEST(realsense_test, t260_and_d435)
   {
     if (frame.is<rs2::frameset>())
     {
-      std::cout << "nonIMU data" << std::endl;
+      std::cout << "Depth data" << std::endl;
     }
     else if (frame.is<rs2::motion_frame>())
     {

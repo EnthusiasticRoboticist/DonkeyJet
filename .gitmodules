@@ -4,3 +4,9 @@
 [submodule "l4t-base"]
 	path = l4t-base
 	url = https://gitlab.com/nvidia/container-images/l4t-base.git
+[submodule "hardware/encoder/teensy_library"]
+	path = hardware/encoder/teensy_library
+	url = https://github.com/XenGi/teensy_library.git
+[submodule "hardware/encoder/teensy.pretty"]
+	path = hardware/encoder/teensy.pretty
+	url = https://github.com/XenGi/teensy.pretty.git

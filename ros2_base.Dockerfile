@@ -180,13 +180,8 @@ RUN cd /root/ros2_pre_installed \
   && git clone -b foxy-devel https://github.com/ros-planning/navigation2.git src/navigation2 \
   && git clone -b ros2 https://github.com/OctoMap/octomap_msgs.git src/octomap_msgs \
   && git clone -b ros2 https://github.com/OctoMap/octomap_ros.git src/octomap_ros \
-  && git clone https://github.com/introlab/rtabmap.git src/rtabmap \
-  && cd src/rtabmap/ \
-  && git checkout 0.21.1-foxy \
-  && cd - \
-  && git clone --branch ros2 https://github.com/introlab/rtabmap_ros.git src/rtabmap_ros \
-  && cd src/rtabmap_ros \
-  && git checkout 0.21.1-foxy \
+  && git clone -b foxy-devel https://github.com/introlab/rtabmap.git src/rtabmap \
+  && git clone -b foxy-devel https://github.com/introlab/rtabmap_ros.git src/rtabmap_ros \
   && grep -l -r '<octomap_msgs\/conversions.h>' | xargs sed -i "s/<octomap_msgs\/conversions.h>/<octomap_msgs\/octomap_msgs\/conversions.h>/g" \
   && cd - \
   && source $ROS_ROOT/install/setup.bash \
